@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 shopt -s extglob
-cd ${0%/*} 2> /dev/null
-# set -x
+cd ${0%/*}
+# echo $0
+# echo $PWD
 debug() {
 	printf "%b=\t%b\n" "SESSIONNAME" "${SESSIONNAME}" "NICKNAME" "${NICKNAME}" "PLAYERS=" "${PLAYERS[@]}" > log$$.log
 }
@@ -79,10 +80,10 @@ end() {
 	printf "${reset}"
 }
 trap end 0
-clear() {
-  printf "\033[1J\033[H"
-  # tput clear
-}
+# clear() {
+	# printf "\033[1J\033[H"
+	# tput clear
+# }
 createCard() {
 	nl="\033[B\033[5D"
 	NUMBER=$1
@@ -148,7 +149,6 @@ mainMenu() {
 	print "${green}║" " TERMINAL UNO " "${yellow}║"
 	print "${blue}╚${yellow}═${red}══${blue}═${yellow}═${red}═${green}═${blue}═${yellow}═${red}═${green}═${blue}═${yellow}═${red}═${green}╝"
 	menu "join game" "create game" "settings" "quit"
-	clear
 	case ${REPLY} in
 		1) joinGame;;
 		2) createGame;;
@@ -181,17 +181,17 @@ while true; do
 	done
 	print "${reset}╘════════════════════════════════╛\n"
 	print "${reset}Game name: " "${green}${SESSIONNAME}"
-	print "${lblue}${blink}Press ${reset}${blink}[enter] ${lblue}${blink}to start"
-	read -rst1
-	[[ -z ${REPLY} ]] && READY=true
+	print "${lblue}${blink}Press ${reset}${blink}[space] ${lblue}${blink}to start"
+	unset REPLY
+	read -rst1 -n1
+	[[ -n ${REPLY} ]] && READY=true
 	[[ ${READYCOUNT} -eq ${#PLAYERS[@]} ]] && break
 done
 unset i
-print "\033[1F\033[0K"
-print "${blue}Game starting in  "
+printf "\033[1F\033[0K"
+printf "${blue}Game starting in  "
 for (( i=3; i>0; i-- )); do
 	printf "${bold}\033[D$i"
 	sleep 1
 done
 print "\n${blue}INSERT ACTUAL GAME HERE"
-clear
