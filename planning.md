@@ -1,10 +1,18 @@
-## Controls
+# UNO
+<details><summary><b>Controls</b></summary>
+<p>
+
 - **`d`** to draw a card
 - **`w`** to jump in
 - not playable cards should be printed faint
 - menu with cards left to right, select card slot with number
 - players must declare uno beforehand
-## Game mockup
+
+</p>
+</details>
+<details><summary><b>Game Mockup</b></summary>
+<p>
+
 ```bash
               ┏━━━┓
 Current Card: ┃ 7 ┃
@@ -28,6 +36,18 @@ You have 7 card(s):    # these cards can have colored corners
 [e]: draw card, [w]: jump in, [q]: call uno
 ```
 This requires smart linewrap to not break up the cards when they become plenty ➡︎ terminal dimensions must be set since detecting them is _pain_
-## Start mockup
-```bash
-```
+</p>
+</details>
+<details><summary><b>Card distribution</b></summary>
+<p>
+
+![](https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/UNO_cards_deck.svg/1920px-UNO_cards_deck.svg.png)
+
+| Cards | Chance |
+| --- | --- |
+| 1-9, ⊘, ⇄, +2 | $\frac{2}{27}$ |
+| 0, ⨁, +4  | $\frac{1}{27}$ |
+
+This means
+</p>
+</details>
