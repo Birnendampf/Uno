@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 shopt -s extglob
 cd ${0%/*}
-# echo $0
-# echo $PWD
+exec 2>log.log
+declare -a CARDS
 debug() {
 	printf "%b=\t%b\n" "SESSIONNAME" "${SESSIONNAME}" "NICKNAME" "${NICKNAME}" "PLAYERS=" "${PLAYERS[@]}" > log$$.log
 }
@@ -13,9 +13,13 @@ debug() {
 	rgb() { printf "\033[1;38;5;$(( 16 + 36 * $1 + 6 * $2 + $3 ))m"; }
 
 	red="$(rgb "5" "0" "0")"
+	r="$(rgb "5" "0" "0")"
 	green="$(rgb "0" "3" "0")"
+	g="$(rgb "0" "3" "0")"
 	blue="$(rgb "0" "0" "5")"
+	b="$(rgb "0" "0" "5")"
 	yellow="$(rgb "5" "5" "0")"
+	y="$(rgb "5" "5" "0")"
 	lblue="$(rgb "4" "3" "5")"
 	bold="\033[1m"
 	faint="\033[2m"
@@ -75,9 +79,16 @@ debug() {
 	}
 #
 end() {
-	rm "${SESSIONNAME}.session" &> /dev/null
-	tput cvvis
-	printf "${reset}"
+	tput reset
+	source "${SESSIONNAME}.session"
+	unset PLAYERS[${PLAYERID}]
+	if [[ -z ${PLAYERS[@]} ]]; then
+		rm "${SESSIONNAME}.session"
+	else
+		var="(${PLAYERS[@]@Q})"
+		sed -e "s/PLAYERS=.*/PLAYERS=$var/" -e "/#\\\\${PLAYERID}/d" "${SESSIONNAME}.session" > tmp
+		mv tmp "${SESSIONNAME}.session"
+	fi
 }
 trap end 0
 # clear() {
@@ -86,15 +97,50 @@ trap end 0
 # }
 createCard() {
 	nl="\033[B\033[5D"
-	NUMBER=$1
-	eval COLOR=\$$2
+	eval local COLOR=\$${1:0:1}
+	local NUMBER=${1:1}
 	case ${NUMBER} in 
-		+4) printf "${blue}┏━${yellow}━━┓${nl}${blue}┃+ ${red}4┃${nl}${green}┗━━${red}━┛\033[2A${reset}";;
-		p ) printf "${blue}┏━${yellow}━━┓${nl}${blue}┃ ⨁ ${red}┃${nl}${green}┗━━${red}━┛\033[2A${reset}";;
+		+4) printf "${blue}┏━${yellow}━━┓${nl}${blue}┃${reset}${bold}+ 4${red}┃${nl}${green}┗━━${red}━┛\033[2A${reset}";;
+		+2) printf "${COLOR}┏━━━┓${nl}┃+ 2┃${nl}┗━━━┛\033[2A${reset}";;
+		p ) printf "${blue}┏━${yellow}━━┓${nl}${blue}┃${reset}${bold} ⨁ ${red}┃${nl}${green}┗━━${red}━┛\033[2A${reset}";;
 		r ) printf "${COLOR}┏━━━┓${nl}┃ ⇄ ┃${nl}┗━━━┛\033[2A${reset}";;
 		s ) printf "${COLOR}┏━━━┓${nl}┃ ⊘ ┃${nl}┗━━━┛\033[2A${reset}";;
 		* )	printf "${COLOR}┏━━━┓${nl}┃ ${NUMBER} ┃${nl}┗━━━┛\033[2A${reset}";;
 	esac
+}
+randomCard() {
+	local OUT
+	RND=$(( 1 + $SRANDOM % 27 ))
+	COL=$(( 1 + $SRANDOM % 4 ))
+	case ${COL} in
+		1) OUT=r;;
+		2) OUT=g;;
+		3) OUT=b;;
+		4) OUT=y;;
+	esac
+	case ${RND} in
+		1 | 2 ) OUT+="1";;
+		3 | 4 ) OUT+="2";;
+		5 | 6 ) OUT+="3";;
+		7 | 8 ) OUT+="4";;
+		9 | 10) OUT+="5";;
+		11| 12) OUT+="6";;
+		13| 14) OUT+="7";;
+		15| 16) OUT+="8";;
+		17| 18) OUT+="9";;
+		19| 20) OUT+="s";;
+		21| 22) OUT+="r";;
+		23| 24) OUT+="+2";;
+		25		) OUT+="0";;
+		26		) OUT+="p";;
+		27		) OUT+="+4";;
+	esac
+	printf "${OUT}"
+}
+draw() {
+	for (( i=0; i<$1; i++)); do
+	CARDS[${#CARDS[@]}]="$(randomCard)"
+	done
 }
 getNickname() {
 	prompt "Please choose a nickname:" NICKNAME
@@ -113,29 +159,27 @@ getSessionName() {
 	export SESSIONNAME
 }
 createGame() {
+	HOST=true
 	getNickname
 	getSessionName
 	echo "PLAYERS=(\"${NICKNAME}\")" > "${SESSIONNAME}.session"
 }
 joinGame() {
-	print "Available games:"
+	HOST=false
 	if [[ -z "$(ls *.session)" ]] &> /dev/null; then
-		error "No games available"
 		mainMenu
 		return 1
 	fi
+	print "Available games:"
 	menu *.session
 	SESSIONNAME="$(ls *.session | tail -n+${REPLY} | head -n1)"
 	SESSIONNAME=${SESSIONNAME%.*}
 	getNickname
-	eval $(cat "${SESSIONNAME}.session")
-	var="("
-	PLAYERS[${#PLAYERS[@]}]="${NICKNAME}"
-	for name in "${PLAYERS[@]}"; do
-		var+="\"${name}\" "
-	done
-	var+=")"
-	sed -E "s/PLAYERS=.*/PLAYERS=$var/" "${SESSIONNAME}.session" > tmp
+	source "${SESSIONNAME}.session"
+
+	PLAYERS+=("${NICKNAME}")
+	var="(${PLAYERS[@]@Q})"
+	sed "s/PLAYERS=.*/PLAYERS=$var/" "${SESSIONNAME}.session" > tmp
 	mv tmp "${SESSIONNAME}.session"
 
 }
@@ -145,6 +189,7 @@ settings() {
 	return 1
 }
 mainMenu() {
+	clear
 	print "${red}╔${blue}═${yellow}═${red}═${green}═${blue}═${yellow}═${red}═${green}═${blue}═${yellow}═${red}═${green}═${blue}═${yellow}═${red}╗"
 	print "${green}║" " TERMINAL UNO " "${yellow}║"
 	print "${blue}╚${yellow}═${red}══${blue}═${yellow}═${red}═${green}═${blue}═${yellow}═${red}═${green}═${blue}═${yellow}═${red}═${green}╝"
@@ -156,42 +201,60 @@ mainMenu() {
 		4) exit;;
 	esac
 }
+
+if true; then # REMOVE
+
 mainMenu
 
 clear
 print "${lblue}Players:\n" "${reset}╒════════════════════════════════╕"
 READY=false
+tput civis
 while true; do
-	tput civis
-	eval $(cat "${SESSIONNAME}.session")
+	source "${SESSIONNAME}.session"
 	printf "\033[3;1H\033[J"
 	i=0
 	READYCOUNT=0
 	for NAME in "${PLAYERS[@]}"; do 
-		let i++
-		if [[ $NAME = $NICKNAME && $READY = "true" && -z $(grep -o "#$i" "${SESSIONNAME}.session") ]]; then
-			echo "#$i" >> "${SESSIONNAME}.session"
+		if [[ "${NAME}" = "${NICKNAME}" ]]; then
+			if [[ "${READY}" = "true" && -z $(grep -o "#\\\\$i" "${SESSIONNAME}.session") ]]; then
+				echo "#\\$i" >> "${SESSIONNAME}.session"
+			elif [[ "${EXIT}" = true ]]; then 
+			PLAYERID=$i
+			exit
+			fi
 		fi
-		if [[ -n $(grep -o "#$i" "${SESSIONNAME}.session") ]]; then
+		if [[ -n $(grep -o "#\\\\$i" "${SESSIONNAME}.session") ]]; then
 			print "${reset}│ " "${green}${normal}${NAME}" "\033[33G ${reset}│"
 			let READYCOUNT++
 		else
 			print "${reset}│ " "${normal}${NAME}" "\033[33G ${reset}│"
 		fi
+		let i++
 	done
+	[[ ${READYCOUNT} -eq ${#PLAYERS[@]} ]] && break
 	print "${reset}╘════════════════════════════════╛\n"
 	print "${reset}Game name: " "${green}${SESSIONNAME}"
-	print "${lblue}${blink}Press ${reset}${blink}[space] ${lblue}${blink}to start"
+	print "${lblue}${blink}Press ${reset}${blink}[space] ${lblue}${blink}to start or ${reset}${blink}[q] to quit"
 	unset REPLY
 	read -rst1 -n1
-	[[ -n ${REPLY} ]] && READY=true
-	[[ ${READYCOUNT} -eq ${#PLAYERS[@]} ]] && break
+	[[ "${REPLY}" = " " ]] && READY=true
+	[[ "${REPLY}" = "q" ]] && EXIT=true
 done
+clear
 unset i
 printf "\033[1F\033[0K"
 printf "${blue}Game starting in  "
 for (( i=3; i>0; i-- )); do
-	printf "${bold}\033[D$i"
+	printf "\033[GGame starting in $i"
 	sleep 1
 done
-print "\n${blue}INSERT ACTUAL GAME HERE"
+for (( i=5; i>=0; i-- )); do
+	printf "\033[G$(rgb "0" "0" "$i")Game starting in 0"
+	sleep 0.1
+done
+fi # REMOVE
+print
+printf "\nCurrent Card:\033[A"
+createCard "$(randomCard)"
+print "\n\n"
