@@ -38,21 +38,21 @@ This requires smart linewrap to not break up the cards when they become plenty �
 $RANDOM will be used to create a random number from 1 to 108
 | RNG | card | ID | notes
 | --- | --- | --- | --- |
-| 1-4 | 0 | " |
-| 5-12 | 1 | " 
-| 13-20 | 2 | " |
-| 21-28 | 3 | " |
-| 29-36 | 4 | " |
-| 37-44 | 5 | " |
-| 45-52 | 6 | " |
-| 53-60 | 7 | " |
-| 61-68 | 8 | " |
-| 69-76 | 9 | " |
-| 77-84 | ⊘ | s | **s**kip |
-| 85-92 | ⇄ | r | **r**everse |
-| 93-100 | +2 | " | 
-| 101-104 | ⨁ | p | **p**ick
-| 105-108 | +4 | " |
+| 1-2 | 1 | " 
+| 3-4 | 2 | " |
+| 5-6 | 3 | " |
+| 7-8 | 4 | " |
+| 9-10 | 5 | " |
+| 11-12 | 6 | " |
+| 13-14 | 7 | " |
+| 15-16 | 8 | " |
+| 17-18 | 9 | " |
+| 19-20 | ⊘ | s | **s**kip |
+| 21-22 | ⇄ | r | **r**everse |
+| 23-24 | +2 | " | 
+| 25 | 0 | " |
+| 26 | ⨁ | p | **p**ick
+| 27 | +4 | " |
 
 <details><summary>image overview</summary>
 
@@ -60,6 +60,5 @@ $RANDOM will be used to create a random number from 1 to 108
 
 </details>
 
-## 
 
 each Card ID will be composed of the color letter (r/g/b/y) and the card number, e.g.: `r0`, `y+2`, `bp`
