@@ -2,11 +2,36 @@
 shopt -s extglob
 cd ${0%/*}
 exec 2>log.log
-declare -a CARDS
-debug() {
-	printf "%b=\t%b\n" "SESSIONNAME" "${SESSIONNAME}" "NICKNAME" "${NICKNAME}" "PLAYERS=" "${PLAYERS[@]}" > log$$.log
+set -x
+SEDPWD=$(which sed)
+sed() {
+	if [[ $(uname) == "Darwin" ]]; then
+		$SEDPWD -i '' "$@"
+	else
+		$SEDPWD -i "$@"
+	fi
 }
-# trap debug DEBUG
+end() {
+	tput cvvis
+	source "${SESSIONNAME}.session"
+	unset READY["${NICKNAME}"]
+	if [[ -z ${READY[@]} ]]; then
+		rm "${SESSIONNAME}.session"  
+	else
+		unset CARDCOUNT["${NICKNAME}"]
+		for ((i = 0; i < ${#PLAYERS[@]}; i++ )); do
+			[[ "${PLAYERS[$i]}" == "${NICKNAME}" ]] && unset PLAYERS[$i]
+		done
+		rdy="${READY[@]@A}"
+		pls="${PLAYERS[@]@A}"
+		cct="${CARDCOUNT[@y]}"
+		sed -e "1s/.*/${rdy:11}/" -e "2s/.*/${pls:11}/" -e "3s/.*/${cct:11}/" "${SESSIONNAME}.session"
+	fi
+}
+trap end 0
+clear() {
+	printf "\033[2J\033[3J\033[H"
+}
 # String formatters
 	# RGB tool allows you to enter three values on a range from 0 to 5 for red, green, and blue, which will be converted to an ANSI control sequence.
 	# For more info, see here: https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit
@@ -42,7 +67,7 @@ debug() {
 # UI functions
 	prompt() {
 		printf "${lblue}%b${reset} " "$1"
-		read -r $2
+		read $2
 	}
 	getkey() {
 		printf "${green}%b${reset} " "$1"
@@ -78,23 +103,8 @@ debug() {
 		printf "\033[$(($#+1-${REPLY}))E"
 	}
 #
-end() {
-	tput reset
-	source "${SESSIONNAME}.session"
-	unset PLAYERS[${PLAYERID}]
-	if [[ -z ${PLAYERS[@]} ]]; then
-		rm "${SESSIONNAME}.session"
-	else
-		var="(${PLAYERS[@]@Q})"
-		sed -e "s/PLAYERS=.*/PLAYERS=$var/" -e "/#\\\\${PLAYERID}/d" "${SESSIONNAME}.session" > tmp
-		mv tmp "${SESSIONNAME}.session"
-	fi
-}
-trap end 0
-# clear() {
-	# printf "\033[1J\033[H"
-	# tput clear
-# }
+declare -A READY
+declare -A CARDCOUNT
 createCard() {
 	nl="\033[B\033[5D"
 	eval local COLOR=\$${1:0:1}
@@ -139,12 +149,12 @@ randomCard() {
 }
 draw() {
 	for (( i=0; i<$1; i++)); do
-	CARDS[${#CARDS[@]}]="$(randomCard)"
+		CARDS+=("$(randomCard)")
 	done
 }
 getNickname() {
 	prompt "Please choose a nickname:" NICKNAME
-	while [[ -z "${NICKNAME}" || "${NICKNAME}" =~ "\t\\" || ${#NICKNAME} -gt 30  ]]; do
+	while [[ -z "${NICKNAME}" || "${NICKNAME}" =~ "\t\\=" || ${#NICKNAME} -gt 30  ]]; do
 		error "Invalid name. A maximum of 30 caracters and no \"\\\" and tabstops are allowed"
 		prompt "Please choose a nickname:" NICKNAME
 	done
@@ -153,8 +163,13 @@ getNickname() {
 getSessionName() {
 	prompt "Please choose a game name:" SESSIONNAME
 	while [[ -z "${SESSIONNAME}" || "${SESSIONNAME}" =~ [^([:alnum:][:blank:]_.?!)] || -e "${SESSIONNAME}.session" ]]; do
-		[[ -e "${SESSIONNAME}.session" ]] && error "Game already exists" || error "Invalid name"
-		prompt "Please choose a game name" SESSIONNAME
+		if [[ -e "${SESSIONNAME}.session" ]]; then
+			error "Game already exists"
+			unset SESSIONNAME
+		else
+			error "Invalid name"
+		fi
+		prompt "Please choose a game name:" SESSIONNAME
 	done
 	export SESSIONNAME
 }
@@ -162,7 +177,8 @@ createGame() {
 	HOST=true
 	getNickname
 	getSessionName
-	echo "PLAYERS=(\"${NICKNAME}\")" > "${SESSIONNAME}.session"
+	READY[${NICKNAME}]=false
+	echo ${READY[@]@A} | cut -c 11- > "${SESSIONNAME}.session"
 }
 joinGame() {
 	HOST=false
@@ -176,12 +192,9 @@ joinGame() {
 	SESSIONNAME=${SESSIONNAME%.*}
 	getNickname
 	source "${SESSIONNAME}.session"
-
-	PLAYERS+=("${NICKNAME}")
-	var="(${PLAYERS[@]@Q})"
-	sed "s/PLAYERS=.*/PLAYERS=$var/" "${SESSIONNAME}.session" > tmp
-	mv tmp "${SESSIONNAME}.session"
-
+	READY[${NICKNAME}]=false
+	local var="${READY[@]@A}"
+	sed "1s/.*/${var:11}/" "${SESSIONNAME}.session"
 }
 settings() {
 	print "This does not exist yet :("
@@ -201,30 +214,47 @@ mainMenu() {
 		4) exit;;
 	esac
 }
+mainGUI() {
+	clear
+	source "${SESSIONNAME}.session"
+	printf "\nCurrent Card: \033[A"
+	createCard "$CURRENT"
+	print "\n\n"
+	printf "${DIRECTION}══════════════════════════════════════════════════════\n"
+	for NAME in "${PLAYERS[@]}"; do
+	print "${reset}[" "${lblue}${NAME}" "${reset}] " "has " "${lblue}${CARDCOUNT[$NAME]} " "cards"
+	done
+	print "\n\n"
+	printf "═══════════════════════════════════════════════════════\n"
+	for CARD in ${CARDS[@]}; do
+		createCard "${CARD}"
+	done
+	print "\n\n"
+}
 
-if true; then # REMOVE
+#################################
+# .session file:								#
+# 	READY=(...)									#
+# 	PLAYERS=(...)								#
+# 	CARDCOUNT=(...)							#
+# 	CURRENT=(...)								#
+#																#
+#################################
 
 mainMenu
 
 clear
 print "${lblue}Players:\n" "${reset}╒════════════════════════════════╕"
-READY=false
 tput civis
+source "${SESSIONNAME}.session"
+# set -x
 while true; do
-	source "${SESSIONNAME}.session"
 	printf "\033[3;1H\033[J"
 	i=0
 	READYCOUNT=0
-	for NAME in "${PLAYERS[@]}"; do 
-		if [[ "${NAME}" = "${NICKNAME}" ]]; then
-			if [[ "${READY}" = "true" && -z $(grep -o "#\\\\$i" "${SESSIONNAME}.session") ]]; then
-				echo "#\\$i" >> "${SESSIONNAME}.session"
-			elif [[ "${EXIT}" = true ]]; then 
-			PLAYERID=$i
-			exit
-			fi
-		fi
-		if [[ -n $(grep -o "#\\\\$i" "${SESSIONNAME}.session") ]]; then
+
+	for NAME in "${!READY[@]}"; do 
+		if ${READY[${NAME}]}; then
 			print "${reset}│ " "${green}${normal}${NAME}" "\033[33G ${reset}│"
 			let READYCOUNT++
 		else
@@ -232,29 +262,59 @@ while true; do
 		fi
 		let i++
 	done
-	[[ ${READYCOUNT} -eq ${#PLAYERS[@]} ]] && break
+	[[ ${READYCOUNT} -eq ${#READY[@]} ]] && break
+
 	print "${reset}╘════════════════════════════════╛\n"
 	print "${reset}Game name: " "${green}${SESSIONNAME}"
 	print "${lblue}${blink}Press ${reset}${blink}[space] ${lblue}${blink}to start or ${reset}${blink}[q] to quit"
+	
 	unset REPLY
-	read -rst1 -n1
-	[[ "${REPLY}" = " " ]] && READY=true
-	[[ "${REPLY}" = "q" ]] && EXIT=true
+	read -rst0.5 -n1
+	source "${SESSIONNAME}.session"
+	if [[ "${REPLY}" = " " ]] && ! ${READY[${NICKNAME}]}; then
+		READY[${NICKNAME}]=true
+		var="${READY[@]@A}"
+		sed "1s/.*/${var:11}/" "${SESSIONNAME}.session"
+	fi
+	[[ "${REPLY}" = "q" ]] && clear && exit
 done
 clear
 unset i
+
 printf "\033[1F\033[0K"
 printf "${blue}Game starting in  "
+
 for (( i=3; i>0; i-- )); do
 	printf "\033[GGame starting in $i"
-	sleep 1
+	sleep 0.5
 done
 for (( i=5; i>=0; i-- )); do
 	printf "\033[G$(rgb "0" "0" "$i")Game starting in 0"
 	sleep 0.1
 done
-fi # REMOVE
-print
-printf "\nCurrent Card:\033[A"
-createCard "$(randomCard)"
-print "\n\n"
+
+print "\033[1F\033[K" "HOST: $HOST"
+if $HOST; then
+	for NAME in "${!READY[@]}"; do 
+		PLAYERS+=("$NAME")
+	done
+	TURN="${PLAYERS[$(( SRANDOM % 3 ))]}"
+
+	echo "${READY[@]@A}" | cut -c 12- > "${SESSIONNAME}.session"
+	echo "${PLAYERS[@]@A}" | cut -c 12- >> "${SESSIONNAME}.session"
+	echo "CARDCOUNT" >> "${SESSIONNAME}.session"
+	echo "CURRENT=$(randomCard)" >> "${SESSIONNAME}.session"
+else
+	while [[ -z $(grep -o "CURRENT=" "${SESSIONNAME}.session") ]]; do
+		print "${lblue}${blink}Syncing…"
+		sleep 0.1
+	done
+fi
+clear
+draw 7
+source "${SESSIONNAME}.session"
+CARDCOUNT[${NICKNAME}]=${#CARDS[@]}
+var="${CARDCOUNT[@]@A}"
+sed "3s/.*/${var:11}/" "${SESSIONNAME}.session"
+mainGUI
+read

@@ -15,17 +15,22 @@
 	// 	],
 	// 	"description": "Log output to console"
 	// }
-	"Print to session file": {
+	"session file": {
 		"scope": "shellscript",
-		"prefix": "to-session",
-		"body": [">> \"\\${SESSIONNAME\\}.session\"$0"]
+		"prefix": ["session", "to session"],
+		"body": ["\"\\${SESSIONNAME\\}.session\"$0"]
 	},
 	"SED to sesssion file":{
 		"scope": "shellscript",
 		"prefix": "sed",
 		"body": [
 			"var=\"\\${${1:VAR}[@]@A}\"",
-			"eval sed \\${SED_ARGS} -e \"${2:line}s/.*/${var:11}/\" \"\\${SESSIONNAME}.session\""
+			"sed \"${2:line}s/.*/${var:11}/\" \"\\${SESSIONNAME}.session\""
 		]
+	},
+	"full variable":{
+		"scope": "shellscript",
+		"prefix": ["var", "full variable", "array"],
+		"body": "\"\\${${1:VAR}[@]}\""
 	}
 }
