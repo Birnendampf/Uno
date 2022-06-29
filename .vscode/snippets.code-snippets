@@ -25,12 +25,12 @@
 		"prefix": "sed",
 		"body": [
 			"var=\"\\${${1:VAR}[@]@A}\"",
-			"sed \"${2:line}s/.*/${var:11}/\" \"\\${SESSIONNAME}.session\""
+			"sed \"${2:line}s/.*/\\${var:11}/\" \"\\${SESSIONNAME}.session\""
 		]
 	},
 	"full variable":{
 		"scope": "shellscript",
 		"prefix": ["var", "full variable", "array"],
-		"body": "\"\\${${1:VAR}[@]}\""
+		"body": "\"\\${${1:VAR}}\""
 	}
 }
