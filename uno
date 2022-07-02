@@ -12,20 +12,21 @@ sed() {
   fi
 }
 end() {
+  printf "\033]0;\a"
   tput cvvis
   source "${SESSIONNAME}.session"
   unset READY["${NICKNAME}"]
   if [[ -z ${READY[@]} ]]; then
-    rm "${SESSIONNAME}.session"  
+    rm "${SESSIONNAME}.session"
   else
     unset CARDCOUNT["${NICKNAME}"]
     for ((i = 0; i < ${#PLAYERS[@]}; i++ )); do
       [[ "${PLAYERS[$i]}" == "${NICKNAME}" ]] && unset PLAYERS[$i]
     done
     rdy="${READY[@]@A}"
-    pls="${PLAYERS[@]@A}"
-    cct="${CARDCOUNT[@y]}"
-    sed -e "1s/.*/${rdy:11}/" -e "2s/.*/${pls:11}/" -e "3s/.*/${cct:11}/" "${SESSIONNAME}.session"
+    pls="PLAYERS=(${PLAYERS[@]@Q})"
+    cct="${CARDCOUNT[@]@A}"
+    sed -e "1s/.*/${rdy:11}/" -e "2s/.*/${pls}/" -e "3s/.*/${cct:11}/" "${SESSIONNAME}.session"
   fi
 }
 trap end 0
