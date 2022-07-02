@@ -253,18 +253,25 @@ cardSelector() {
   print ""
 }
 advanceTurn() {
+  local i=0
   source "${SESSIONNAME}.session"
-  local t=false
   for NAME in "${PLAYERS[@]}"; do
-    if $t; then
-      TURN="${NAME}"
-      t=false
+    if [[ "${NAME}" == "${TURN}" ]]; then
+      if [[ "${DIRECTION}" == "⬇︎" ]]; then
+        if [[ $((++i)) -lt ${#PLAYERS[@]} ]]; then
+          TURN="${PLAYERS[i]}"
+        else
+          TURN="${PLAYERS[0]}"
+        fi
+      else
+        TURN="${PLAYERS[$((--i))]}"
+      fi
       break
     elif [[ "${NAME}" = "${TURN}" ]]; then
       t=true
     fi
+    let i++
   done
-  $t && TURN="${PLAYERS[0]}"
   var="${TURN[@]@A}"
   sed "5s/.*/${var}/" "${SESSIONNAME}.session"
 }
