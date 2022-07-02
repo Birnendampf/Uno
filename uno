@@ -156,8 +156,8 @@ draw() {
 }
 getNickname() {
   prompt "Please choose a nickname:" NICKNAME
-  while [[ -z "${NICKNAME}" || "${NICKNAME}" =~ "\t\\=" || ${#NICKNAME} -gt 30  ]]; do
-    error "Invalid name. A maximum of 30 caracters and no \"\\\" and tabstops are allowed"
+  while [[ -z "${NICKNAME}" || "${NICKNAME}" =~ [^([:alnum:]_.?! )] || ${#NICKNAME} -gt 30  ]]; do
+    error "Invalid name. maximum is a total 30 of letters, numbers, spaces and '?_.!'"
     prompt "Please choose a nickname:" NICKNAME
   done
   export NICKNAME
@@ -193,8 +193,13 @@ joinGame() {
   SESSIONNAME="$(ls *.session | tail -n+${REPLY} | head -n1)"
   SESSIONNAME=${SESSIONNAME%.*}
   getNickname
-  # if [[ -n $(grep -o "${NICKNAME}" "${SESSIONNAME}.session")]]; then
-
+  source "${SESSIONNAME}.session"
+  IFS="|"
+  while [[ "${IFS}${!READY[*]}${IFS}" =~ "${IFS}${NICKNAME}${IFS}" ]]; do
+    error "Nickname taken!"
+    getNickname
+  done
+  unset IFS
   source "${SESSIONNAME}.session"
   READY[${NICKNAME}]=false
   local var="${READY[@]@A}"
