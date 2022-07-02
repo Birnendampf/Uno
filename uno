@@ -68,7 +68,7 @@ clear() {
 # UI functions
   prompt() {
     printf "${lblue}%b${reset} " "$1"
-    read $2
+    read -r $2
   }
   getkey() {
     printf "${green}%b${reset} " "$1"
@@ -110,10 +110,11 @@ createCard() {
   nl="\033[B\033[5D"
   eval local COLOR=\$${1:0:1}
   local NUMBER=${1:1}
-  case ${NUMBER} in 
+  case ${NUMBER} in
     +4) printf "${blue}┏━${yellow}━━┓${nl}${blue}┃${reset}${bold}+ 4${red}┃${nl}${green}┗━━${red}━┛\033[2A${reset}";;
     +2) printf "${COLOR}┏━━━┓${nl}┃+ 2┃${nl}┗━━━┛\033[2A${reset}";;
     p ) printf "${blue}┏━${yellow}━━┓${nl}${blue}┃${reset}${bold} ⨁ ${red}┃${nl}${green}┗━━${red}━┛\033[2A${reset}";;
+    pc) printf "${COLOR}┏━━━┓${nl}┃ ⨁ ┃${nl}┗━━━┛\033[2A${reset}";;
     r ) printf "${COLOR}┏━━━┓${nl}┃ ⇄ ┃${nl}┗━━━┛\033[2A${reset}";;
     s ) printf "${COLOR}┏━━━┓${nl}┃ ⊘ ┃${nl}┗━━━┛\033[2A${reset}";;
     * )	printf "${COLOR}┏━━━┓${nl}┃ ${NUMBER} ┃${nl}┗━━━┛\033[2A${reset}";;
@@ -217,13 +218,6 @@ mainMenu() {
     4) exit;;
   esac
 }
-cardSelector() {
-  for ((i = 1; i <= ${#CARDS[@]}; i++)); do
-    local spaces="  "
-    printf " [${i}]${spaces:${#i}}"
-  done
-  print ""
-}
 mainGUI() {
   clear
   source "${SESSIONNAME}.session"
@@ -250,6 +244,13 @@ mainGUI() {
     createCard "${CARD}"
   done
   print "\n\n"
+}
+cardSelector() {
+  for ((i = 1; i <= ${#CARDS[@]}; i++)); do
+    local spaces="  "
+    printf " [${i}]${spaces:${#i}}"
+  done
+  print ""
 }
 advanceTurn() {
   source "${SESSIONNAME}.session"
@@ -291,7 +292,7 @@ while true; do
   i=0
   READYCOUNT=0
 
-  for NAME in "${!READY[@]}"; do 
+  for NAME in "${!READY[@]}"; do
     if [[ $i -eq 0 && "${NAME}" == "${NICKNAME}" ]]; then
       export HOST=true
       printf "\033]0;${NICKNAME} [HOST]\a"
@@ -313,7 +314,7 @@ while true; do
   print "${reset}╘════════════════════════════════╛\n"
   print "${reset}Game name: " "${green}${SESSIONNAME}"
   print "${lblue}${blink}Press ${reset}${blink}[space] ${lblue}${blink}to start or ${reset}${blink}[q] to quit"
-  
+
   unset REPLY
   read -rst0.5 -n1
   source "${SESSIONNAME}.session"
@@ -337,7 +338,7 @@ for (( i=3; i>0; i-- )); do
 done &
 mkfifo "#" &> /dev/null
 if $HOST; then
-  for NAME in "${!READY[@]}"; do 
+  for NAME in "${!READY[@]}"; do
     PLAYERS+=("$NAME")
   done
   source "${SESSIONNAME}.session"
@@ -373,22 +374,17 @@ for NAME in "${PLAYERS[@]}"; do
   fi
   sleep 0.1
 done
-wait
-# cp "${SESSIONNAME}.session" tmp$HOST.session
-mainGUI
 while true; do
+  mainGUI
   if [[ "${TURN}" == "${NICKNAME}" ]]; then
     REPLY=0
     while [[ -z ${REPLY} || -n "${REPLY//[1-9]/}" || ${REPLY} -gt "${#CARDS[@]}" ]] 2> /dev/null; do
-      mainGUI
       cardSelector
       read
       printf "\033[1F\033[K"
     done
     advanceTurn
-  else 
-
-    while [[ -z $(grep -o "TURN='${NICKNAME}'" "${SESSIONNAME}.session") ]]; do
+  else
       printf "\033[Gwaiting for ${lblue}${TURN}${reset}..."
       mainGUI
       read > "#"
