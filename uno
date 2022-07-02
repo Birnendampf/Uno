@@ -2,6 +2,8 @@
 shopt -s extglob
 cd ${0%/*}
 exec 2>log.log
+mkfifo "$$.fifo"
+exec 7<> "$$.fifo"
 # set -x
 SEDPWD=$(which sed)
 sed() {
@@ -13,6 +15,7 @@ sed() {
 }
 end() {
   printf "\033]0;\a"
+  rm "$$.fifo"
   tput cvvis
   source "${SESSIONNAME}.session"
   unset READY["${NICKNAME}"]
@@ -27,6 +30,7 @@ end() {
     pls="PLAYERS=(${PLAYERS[@]@Q})"
     cct="${CARDCOUNT[@]@A}"
     sed -e "1s/.*/${rdy:11}/" -e "2s/.*/${pls}/" -e "3s/.*/${cct:11}/" "${SESSIONNAME}.session"
+    echo | tee *.fifo > /dev/null
   fi
 }
 trap end 0
@@ -257,6 +261,29 @@ cardSelector() {
   done
   print ""
 }
+validate() {
+  if [[ $# -lt 2 ]]; then
+    echo "not enough arguments: $@" >&2
+    exit 65
+  elif [[ $# -gt 2 ]]; then
+    echo "too many arguments: $@" >&2
+    exit 65
+  fi
+  # $1 = current
+  # $2 = possible candidate
+  local COLOR1=${1:0:1}
+  local COLOR2=${2:0:1}
+  local NUMBER1=${1:1}
+  local NUMBER2=${2:1}
+  case "${NUMBER1}" in 
+    +2) [[ "${NUMBER2}" == "+2" ]] && return 0;;
+    +4) [[ "${NUMBER2}" == "+4" ]] && return 0 ;;
+    pc) [[ "${COLOR2}" == "${COLOR1}" ]] && return 0 ;;
+    p ) return 0;;
+    * ) [[ "${NUMBER2}" == "${NUMBER1}" || "${COLOR2}" == "${COLOR1}" ]] && return 0 ;;
+  esac
+  return
+}
 advanceTurn() {
   local i=0
   source "${SESSIONNAME}.session"
@@ -272,13 +299,13 @@ advanceTurn() {
         TURN="${PLAYERS[$((--i))]}"
       fi
       break
-    elif [[ "${NAME}" = "${TURN}" ]]; then
-      t=true
     fi
     let i++
   done
   var="${TURN[@]@A}"
   sed "5s/.*/${var}/" "${SESSIONNAME}.session"
+  sleep 0.1
+  echo | tee *.fifo > /dev/null
 }
 #####################################
 # .session file:                    #
@@ -318,7 +345,6 @@ while true; do
     else
       print "${reset}│ " "${normal}${NAME}" "\033[33G ${reset}│"
     fi
-      
     let i++
   done
   [[ ${READYCOUNT} -eq ${#READY[@]} ]] && break
@@ -340,15 +366,6 @@ done
 # cp "${SESSIONNAME}.session" tmp.session
 clear
 unset i
-
-printf "\033[1F\033[0K"
-printf "${blue}Game starting in  "
-
-for (( i=3; i>0; i-- )); do
-  printf "\033[GGame starting in $i"
-  sleep 0.5
-done &
-mkfifo "#" &> /dev/null
 if $HOST; then
   for NAME in "${!READY[@]}"; do
     PLAYERS+=("$NAME")
@@ -361,20 +378,16 @@ if $HOST; then
   echo "#CARDCOUNT" >> "${SESSIONNAME}.session"
   echo "CURRENT=$(randomCard)" >> "${SESSIONNAME}.session"
   echo "${TURN[@]@A}" >> "${SESSIONNAME}.session"
-  echo "DIRECTION=⬇︎" >> "${SESSIONNAME}.session"
-  wait
-  echo > "#"
+  echo "DIRECTION=⬆︎" >> "${SESSIONNAME}.session"
+  sleep 1
+  echo | tee *.fifo > /dev/null
 else
-  read < "#"
-  kill $!
+  exec 7<&-
+  read < "$$.fifo"
+  exec 7<> "$$.fifo"
 fi
-draw 7
 tput bel
-sleep 1
-for (( i=5; i>=0; i-- )); do
-  printf "\033[G$(rgb "0" "0" "$i")Game starting in 0"
-  sleep 0.1
-done &
+draw 7
 source "${SESSIONNAME}.session"
 for NAME in "${PLAYERS[@]}"; do
   if [[ "${NAME}" == "${NICKNAME}" ]]; then
@@ -382,7 +395,6 @@ for NAME in "${PLAYERS[@]}"; do
     CARDCOUNT[${NICKNAME}]=${#CARDS[@]}
     var="${CARDCOUNT[@]@A}"
     sed "3s/.*/${var:11}/" "${SESSIONNAME}.session"
-    tput bel
   fi
   sleep 0.1
 done
@@ -397,9 +409,9 @@ while true; do
     done
     advanceTurn
   else
-      printf "\033[Gwaiting for ${lblue}${TURN}${reset}..."
-      mainGUI
-      read > "#"
-    done
+    printf "\033[Gwaiting for ${lblue}${TURN}${reset}..."
+    exec 7<&-
+    read < "$$.fifo"
+    exec 7<> "$$.fifo"
   fi
 done
