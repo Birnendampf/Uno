@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 shopt -s extglob
+shopt -s checkwinsize
 cd ${0%/*}
 exec 2>log.log
 mkfifo "$$.fifo"
@@ -13,10 +14,15 @@ sed() {
     $SEDPWD -i "$@"
   fi
 }
+clear() {
+  tput clear
+  printf "\033[2J\033[3J\033[H"
+}
 end() {
+  # clear
   printf "\033]0;\a"
   rm "$$.fifo"
-  tput cvvis
+  tput cnorm
   source "${SESSIONNAME}.session"
   unset READY["${NICKNAME}"]
   if [[ -z ${READY[@]} ]]; then
@@ -34,9 +40,6 @@ end() {
   fi
 }
 trap end 0
-clear() {
-  printf "\033[2J\033[3J\033[H"
-}
 # String formatters
   # RGB tool allows you to enter three values on a range from 0 to 5 for red, green, and blue, which will be converted to an ANSI control sequence.
   # For more info, see here: https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit
@@ -50,7 +53,7 @@ clear() {
   b="$(rgb "0" "0" "5")"
   yellow="$(rgb "5" "5" "0")"
   y="$(rgb "5" "5" "0")"
-  lblue="$(rgb "4" "3" "5")"
+  lblue="$(rgb "3" "2" "5")"
   bold="\033[1m"
   faint="\033[2m"
   italic="\033[3m"
@@ -110,54 +113,6 @@ clear() {
 #
 declare -A READY
 declare -A CARDCOUNT
-createCard() {
-  nl="\033[B\033[5D"
-  eval local COLOR=\$${1:0:1}
-  local NUMBER=${1:1}
-  case ${NUMBER} in
-    +4) printf "${blue}┏━${yellow}━━┓${nl}${blue}┃${reset}${bold}+ 4${red}┃${nl}${green}┗━━${red}━┛\033[2A${reset}";;
-    +2) printf "${COLOR}┏━━━┓${nl}┃+ 2┃${nl}┗━━━┛\033[2A${reset}";;
-    p ) printf "${blue}┏━${yellow}━━┓${nl}${blue}┃${reset}${bold} ⨁ ${red}┃${nl}${green}┗━━${red}━┛\033[2A${reset}";;
-    pc) printf "${COLOR}┏━━━┓${nl}┃ ⨁ ┃${nl}┗━━━┛\033[2A${reset}";;
-    r ) printf "${COLOR}┏━━━┓${nl}┃ ⇄ ┃${nl}┗━━━┛\033[2A${reset}";;
-    s ) printf "${COLOR}┏━━━┓${nl}┃ ⊘ ┃${nl}┗━━━┛\033[2A${reset}";;
-    * )	printf "${COLOR}┏━━━┓${nl}┃ ${NUMBER} ┃${nl}┗━━━┛\033[2A${reset}";;
-  esac
-}
-randomCard() {
-  local OUT
-  RND=$(( 1 + $SRANDOM % 27 ))
-  COL=$(( 1 + $SRANDOM % 4 ))
-  case ${COL} in
-    1) OUT=r;;
-    2) OUT=g;;
-    3) OUT=b;;
-    4) OUT=y;;
-  esac
-  case ${RND} in
-    1 | 2 ) OUT+="1";;
-    3 | 4 ) OUT+="2";;
-    5 | 6 ) OUT+="3";;
-    7 | 8 ) OUT+="4";;
-    9 | 10) OUT+="5";;
-    11| 12) OUT+="6";;
-    13| 14) OUT+="7";;
-    15| 16) OUT+="8";;
-    17| 18) OUT+="9";;
-    19| 20) OUT+="s";;
-    21| 22) OUT+="r";;
-    23| 24) OUT+="+2";;
-    25		) OUT+="0";;
-    26		) OUT+="p";;
-    27		) OUT+="+4";;
-  esac
-  printf "${OUT}"
-}
-draw() {
-  for (( i=0; i<$1; i++)); do
-    CARDS+=("$(randomCard)")
-  done
-}
 getNickname() {
   prompt "Please choose a nickname:" NICKNAME
   while [[ -z "${NICKNAME}" || "${NICKNAME}" =~ [^([:alnum:]_.?! )] || ${#NICKNAME} -gt 30  ]]; do
@@ -228,13 +183,18 @@ mainMenu() {
   esac
 }
 mainGUI() {
+  if [[ "${DIRECTION}" == "down" ]]; then
+    local ARROW="⬇"
+  else
+    local ARROW="⬆"
+  fi
   clear
   source "${SESSIONNAME}.session"
   # print "\033[1F\033[K" "HOST: $HOST"
   printf "${reset}\nCurrent Card: \033[A"
   createCard "$CURRENT"
   print "\n\n"
-  printf "${DIRECTION} ═════════════════════════════════════════════════════\n"
+  printf "${ARROW} ═════════════════════════════════════════════════════\n"
   for NAME in "${PLAYERS[@]}"; do
     if [[ "${NAME}" == "${TURN}" ]]; then
       local var="${red}⮕ "
@@ -249,47 +209,174 @@ mainGUI() {
   done
   print ""
   printf "═══════════════════════════════════════════════════════\n"
-  for CARD in ${CARDS[@]}; do
+  for CARD in "${CARDS[@]}"; do
     createCard "${CARD}"
   done
   print "\n\n"
 }
-cardSelector() {
-  for ((i = 1; i <= ${#CARDS[@]}; i++)); do
-    local spaces="  "
-    printf " [${i}]${spaces:${#i}}"
+createCard() {
+  nl="\033[B\033[5D"
+  eval local COLOR=\$${1:0:1}
+  local NUMBER=${1:1}
+  case ${NUMBER} in
+    +4) printf "${blue}┏━${yellow}━━┓${nl}${blue}┃${reset}${bold}+ 4${red}┃${nl}${green}┗━━${red}━┛\033[2A${reset}";;
+    4c) printf "${COLOR}┏━━━┓${nl}┃+ 4┃${nl}┗━━━┛\033[2A${reset}";;
+    +2) printf "${COLOR}┏━━━┓${nl}┃+ 2┃${nl}┗━━━┛\033[2A${reset}";;
+    p ) printf "${blue}┏━${yellow}━━┓${nl}${blue}┃${reset}${bold} ⨁ ${red}┃${nl}${green}┗━━${red}━┛\033[2A${reset}";;
+    pc) printf "${COLOR}┏━━━┓${nl}┃ ⨁ ┃${nl}┗━━━┛\033[2A${reset}";;
+    r ) printf "${COLOR}┏━━━┓${nl}┃ ⇄ ┃${nl}┗━━━┛\033[2A${reset}";;
+    s ) printf "${COLOR}┏━━━┓${nl}┃ ⊘ ┃${nl}┗━━━┛\033[2A${reset}";;
+    * )	printf "${COLOR}┏━━━┓${nl}┃ ${NUMBER} ┃${nl}┗━━━┛\033[2A${reset}";;
+  esac
+}
+randomCard() {
+  local OUT
+  RND=$(( 1 + $SRANDOM % 27 ))
+  COL=$(( 1 + $SRANDOM % 4 ))
+  case ${COL} in
+    1) OUT=r;;
+    2) OUT=g;;
+    3) OUT=b;;
+    4) OUT=y;;
+  esac
+  case ${RND} in
+    1 | 2 ) OUT+="1";;
+    3 | 4 ) OUT+="2";;
+    5 | 6 ) OUT+="3";;
+    7 | 8 ) OUT+="4";;
+    9 | 10) OUT+="5";;
+    11| 12) OUT+="6";;
+    13| 14) OUT+="7";;
+    15| 16) OUT+="8";;
+    17| 18) OUT+="9";;
+    19| 20) OUT+="s";;
+    21| 22) OUT+="r";;
+    23| 24) OUT+="+2";;
+    25		) OUT+="0";;
+    26		) OUT+="p";;
+    27		) OUT+="+4";;
+  esac
+  printf "${OUT}"
+}
+draw() {
+  for (( i=0; i<$1; i++)); do
+    CARDS+=("$(randomCard)")
   done
-  print ""
+}
+remove() {
+  unset CARDS[$1]
+  CARDS=("${CARDS[@]}")
 }
 validate() {
-  if [[ $# -lt 2 ]]; then
-    echo "not enough arguments: $@" >&2
-    exit 65
-  elif [[ $# -gt 2 ]]; then
-    echo "too many arguments: $@" >&2
-    exit 65
-  fi
   # $1 = current
   # $2 = possible candidate
-  local COLOR1=${1:0:1}
-  local COLOR2=${2:0:1}
-  local NUMBER1=${1:1}
-  local NUMBER2=${2:1}
-  case "${NUMBER1}" in 
-    +2) [[ "${NUMBER2}" == "+2" ]] && return 0;;
-    +4) [[ "${NUMBER2}" == "+4" ]] && return 0 ;;
-    pc) [[ "${COLOR2}" == "${COLOR1}" ]] && return 0 ;;
-    p ) return 0;;
-    * ) [[ "${NUMBER2}" == "${NUMBER1}" || "${COLOR2}" == "${COLOR1}" ]] && return 0 ;;
+  local COLOR_1=${1:0:1}
+  local COLOR_2=${2:0:1}
+  local NUMBER_1=${1:1}
+  local NUMBER_2=${2:1}
+  if [[ "${NUMBER_1}" == "+2" && -n "${META}" ]]; then
+    [[ "${NUMBER_2}" == "+2" ]] && return 0
+    return 1
+  fi
+  [[ "${NUMBER_2}" == "+4" ]] && return 0
+  if [[ "${NUMBER_1}" == "+4" && -n "${META}" ]]; then
+    [[ "${NUMBER_2}" == "+4" ]] && return 0
+    return 1
+  fi
+  if [[ -z "${META}" ]]; then
+    [[ "${NUMBER_2}" == "${NUMBER_1}" || "${COLOR_2}" == "${COLOR_1}" || "${NUMBER_1}" == "p" ]] && return 0
+  else
+    [[ "${NUMBER_2}" == "${NUMBER_1}" ]] && return 0
+    return 1
+  fi
+}
+cardSelector() {
+  source "${SESSIONNAME}.session"
+  local spaces="  "
+  VALID=(0)
+  for ((i = 1; i <= ${#CARDS[@]}; i++)); do
+    if validate "${CURRENT}" "${CARDS[$((i - 1))]}"; then
+      printf " [${i}]${spaces:${#i}}"
+      VALID+=($i)
+    else
+      printf "     "
+    fi
+  done
+  echo
+  tput sc
+  tput cup $(($(stty size | grep -o "[0-9]* ")-1))
+  printf "${bold}%b${reset}" "${lblue}please choose a card or enter " "'0' " "${lblue}to draw one"
+  tput rc
+  unset SELECTED
+  while [[ -n "${SELECTED//[0-9]/}" || -z ${SELECTED} || ! " ${VALID[*]} " =~ " ${SELECTED} " ]] 2> /dev/null; do
+    read SELECTED
+    printf "\033[1F\033[K"
+  done
+  export SELECTED
+}
+applyCard() {
+  if [[ "${SELECTED}" -eq 0  ]]; then
+    if [[ "${META}" -gt 0 ]]; then
+      draw "${META}"
+      META=""
+      return 0
+    else
+      draw 1
+      if validate "${CURRENT}" "${CARDS[-1]}"; then
+        mainGUI
+        yn "place card?"
+        if [[ "${REPLY}" == "y" ]]; then
+          SELECTED="${#CARDS[@]}"
+        else
+          return 0
+        fi
+      else
+        return 0
+      fi
+    fi
+  fi
+
+  printf  "%b" "\033[1F" "\033[$((SELECTED * 5 - 3))G" "${lblue}[$SELECTED]${reset}"
+  let SELECTED--
+  CURRENT="${CARDS[$SELECTED]}"
+  remove "${SELECTED}"
+  REPLY=a
+  case "${CURRENT:1}" in
+    +4)
+      var="${CURRENT@A}"
+      sed "4s/.*/${var}/" "${SESSIONNAME}.session"
+      mainGUI
+      echo | tee *.fifo > /dev/null
+      let META+=4
+      while [[ $REPLY =~ [^(rgby)] ]]; do
+        getkey "choose a color [${r}r/${g}g/${b}b/${y}y]"
+      done
+      CURRENT="${REPLY}4c";;
+    +2) let META+=2;;
+    p )
+      var="${CURRENT@A}"
+      sed "4s/.*/${var}/" "${SESSIONNAME}.session"
+      mainGUI
+      echo | tee *.fifo > /dev/null
+      while [[ $REPLY =~ [^(rgby)] ]]; do
+        getkey "choose a color [${r}r/${g}g/${b}b/${y}y]"
+      done
+      CURRENT="${REPLY}pc";;
+    r )
+      if [[ "${DIRECTION}" == "⬇" ]]; then
+        DIRECTION="up"
+      else 
+        DIRECTION="down"
+      fi;;
+    s ) META="skip";;
   esac
-  return
 }
 advanceTurn() {
   local i=0
   source "${SESSIONNAME}.session"
   for NAME in "${PLAYERS[@]}"; do
     if [[ "${NAME}" == "${TURN}" ]]; then
-      if [[ "${DIRECTION}" == "⬇︎" ]]; then
+      if [[ "${DIRECTION}" == "down" ]]; then
         if [[ $((++i)) -lt ${#PLAYERS[@]} ]]; then
           TURN="${PLAYERS[i]}"
         else
@@ -306,20 +393,21 @@ advanceTurn() {
   sed "5s/.*/${var}/" "${SESSIONNAME}.session"
   sleep 0.1
   echo | tee *.fifo > /dev/null
+  # tput bel
 }
+
 #####################################
 # .session file:                    #
-#1  READY=(["gamer 2"]="true"...)   #
-#2  PLAYERS=([0]="gamer 2"...)      #
-#3  CARDCOUNT=(["gamer 2"]="7"...)  #
-#4  CURRENT='rr'                    #
-#5  TURN='gamer 1'                  #
-#6  DIRECTION="⬇︎"                   #
+# 1  READY=(["gamer 2"]="true"...)  #
+# 2  PLAYERS=([0]="gamer 2"...)     #
+# 3  CARDCOUNT=(["gamer 2"]="7"...) #
+# 4  CURRENT='rr'                   #
+# 5  TURN='gamer 1'                 #
+# 6  DIRECTION='⬇'                 #
+# 7  META='false'                   #
 #                                   #
 #####################################
-
 mainMenu
-
 clear
 print "${lblue}Players:\n" "${reset}╒════════════════════════════════╕"
 tput civis
@@ -363,9 +451,10 @@ while true; do
   fi
   [[ "${REPLY}" = "q" ]] && clear && exit
 done
-# cp "${SESSIONNAME}.session" tmp.session
 clear
-unset i
+printf "${green}Starting game..."
+
+# HOST INIT
 if $HOST; then
   for NAME in "${!READY[@]}"; do
     PLAYERS+=("$NAME")
@@ -375,18 +464,18 @@ if $HOST; then
 
   echo "${READY[@]@A}" | cut -c 12- > "${SESSIONNAME}.session"
   echo "${PLAYERS[@]@A}" | cut -c 12- >> "${SESSIONNAME}.session"
-  echo "#CARDCOUNT" >> "${SESSIONNAME}.session"
+  echo "# CARDCOUNT" >> "${SESSIONNAME}.session"
   echo "CURRENT=$(randomCard)" >> "${SESSIONNAME}.session"
-  echo "${TURN[@]@A}" >> "${SESSIONNAME}.session"
-  echo "DIRECTION=⬆︎" >> "${SESSIONNAME}.session"
-  sleep 1
+  echo "${TURN@A}" >> "${SESSIONNAME}.session"
+  echo "DIRECTION=up" >> "${SESSIONNAME}.session"
+  echo "META=''" >> "${SESSIONNAME}.session"
+  sleep 0.5
   echo | tee *.fifo > /dev/null
 else
   exec 7<&-
   read < "$$.fifo"
   exec 7<> "$$.fifo"
 fi
-tput bel
 draw 7
 source "${SESSIONNAME}.session"
 for NAME in "${PLAYERS[@]}"; do
@@ -401,15 +490,25 @@ done
 while true; do
   mainGUI
   if [[ "${TURN}" == "${NICKNAME}" ]]; then
-    REPLY=0
-    while [[ -z ${REPLY} || -n "${REPLY//[1-9]/}" || ${REPLY} -gt "${#CARDS[@]}" ]] 2> /dev/null; do
+    if [[ "${META}" != "skip" ]]; then
       cardSelector
-      read
-      printf "\033[1F\033[K"
-    done
+      applyCard
+    else
+      META=""
+      error "\nYou have been skipped"
+      sleep 0.5
+    fi
+    CARDCOUNT[${NICKNAME}]=${#CARDS[@]}
+    var1="${CARDCOUNT[@]@A}"
+    var2="${CURRENT@A}"
+    var3="${DIRECTION@A}"
+    var4="${META@A}"
+    echo $var4 >&2
+    sed -e "3s/.*/${var1:11}/" -e "4s/.*/${var2}/" -e "5s/.*/${var3}/" -e "7s/.*/${var4}/" "${SESSIONNAME}.session"
+    sleep 0.1
     advanceTurn
   else
-    printf "\033[Gwaiting for ${lblue}${TURN}${reset}..."
+    printf "\033[Gwaiting for ${lblue}${TURN}${reset}...\033[8m"
     exec 7<&-
     read < "$$.fifo"
     exec 7<> "$$.fifo"
