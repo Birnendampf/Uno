@@ -2,7 +2,7 @@
 shopt -s extglob
 shopt -s checkwinsize
 cd ${0%/*}
-exec 2>log.log
+# exec 2>log.log
 mkfifo "$$.fifo"
 exec 7<> "$$.fifo"
 REPLY=$1
@@ -26,7 +26,7 @@ end() {
   printf "\033]0;\a"
   rm "$$.fifo"
   tput cnorm
-  source "${SESSIONNAME}.session"
+  source "${SESSIONNAME}.session" 2>/dev/null || return
   unset READY["${NICKNAME}"]
   if [[ -z ${READY[@]} ]]; then
     rm "${SESSIONNAME}.session"
@@ -517,7 +517,7 @@ while true; do
       applyCard
     else
       META=""
-      error "\nYou have been skipped"
+      error "You have been skipped"
       sleep 0.5
     fi
     CARDCOUNT[${NICKNAME}]=${#CARDS[@]}
