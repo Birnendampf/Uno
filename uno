@@ -200,13 +200,13 @@ reload() {
   exec $0 2 "${NICKNAME}" "${SESSIONNAME}"
 }
 mainGUI() {
+  source "${SESSIONNAME}.session"
   if [[ "${DIRECTION}" == "down" ]]; then
     local ARROW="⬇"
   else
     local ARROW="⬆"
   fi
   clear
-  source "${SESSIONNAME}.session"
   # print "\033[1F\033[K" "HOST: $HOST"
   printf "${reset}\nCurrent Card: \033[A"
   createCard "$CURRENT"
@@ -385,7 +385,7 @@ applyCard() {
       done
       CURRENT="${REPLY}pc";;
     r )
-      if [[ "${DIRECTION}" == "⬇" ]]; then
+      if [[ "${DIRECTION}" == "down" ]]; then
         DIRECTION="up"
       else 
         DIRECTION="down"
@@ -525,8 +525,7 @@ while true; do
     var2="${CURRENT@A}"
     var3="${DIRECTION@A}"
     var4="${META@A}"
-    echo $var4 >&2
-    sed -e "3s/.*/${var1:11}/" -e "4s/.*/${var2}/" -e "5s/.*/${var3}/" -e "7s/.*/${var4}/" "${SESSIONNAME}.session"
+    sed -e "3s/.*/${var1:11}/" -e "4s/.*/${var2}/" -e "6s/.*/${var3}/" -e "7s/.*/${var4}/" "${SESSIONNAME}.session"
     sleep 0.1
     advanceTurn
   else
