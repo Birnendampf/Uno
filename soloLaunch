@@ -1,0 +1,3 @@
+#!/bin/bash
+~/Documents/GitHub/Uno/uno 2 "gamer 1" "game room"
+# echo $0

@@ -193,6 +193,12 @@ mainMenu() {
     4) exit;;
   esac
 }
+reload() {
+  end
+  error "RELOADING"
+  sleep 0.1
+  exec $0 2 "${NICKNAME}" "${SESSIONNAME}"
+}
 mainGUI() {
   if [[ "${DIRECTION}" == "down" ]]; then
     local ARROW="⬇"
@@ -319,7 +325,19 @@ cardSelector() {
   printf "${bold}%b${reset}" "${lblue}please choose a card or enter " "'0' " "${lblue}to draw one"
   tput rc
   unset SELECTED
-  while [[ -n "${SELECTED//[0-9]/}" || -z ${SELECTED} || ! " ${VALID[*]} " =~ " ${SELECTED} " ]] 2> /dev/null; do
+  while [[ -z ${SELECTED} || ! " ${VALID[*]} " =~ " ${SELECTED} " ]] 2> /dev/null; do
+    if [[ "${SELECTED}" == "r" ]]; then
+      print "CheatCode: "
+      read
+      eval $REPLY 2>&1
+      var="${CURRENT@A}"
+      sed "4s/.*/${var}/" "${SESSIONNAME}.session"
+      read -t1
+      mainGUI
+      cardSelector
+      export SELECTED
+      return
+    fi
     read SELECTED
     printf "\033[1F\033[K"
   done
