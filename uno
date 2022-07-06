@@ -5,6 +5,9 @@ cd ${0%/*}
 exec 2>log.log
 mkfifo "$$.fifo"
 exec 7<> "$$.fifo"
+REPLY=$1
+NICKNAME=$2
+SESSIONNAME=$3
 # set -x
 SEDPWD=$(which sed)
 sed() {
@@ -114,7 +117,9 @@ trap end 0
 declare -A READY
 declare -A CARDCOUNT
 getNickname() {
-  prompt "Please choose a nickname:" NICKNAME
+  if [[ -z "${NICKNAME}" ]] ; then
+    prompt "Please choose a nickname:" NICKNAME
+  fi
   while [[ -z "${NICKNAME}" || "${NICKNAME}" =~ [^([:alnum:]_.?! )] || ${#NICKNAME} -gt 30  ]]; do
     error "Invalid name. maximum is a total 30 of letters, numbers, spaces and '?_.!'"
     prompt "Please choose a nickname:" NICKNAME
@@ -123,7 +128,9 @@ getNickname() {
   printf "\033]0;${NICKNAME}\a"
 }
 getSessionName() {
-  prompt "Please choose a game name:" SESSIONNAME
+  if [[ -z "${SESSIONNAME}" ]] ; then
+    prompt "Please choose a game name:" SESSIONNAME
+  fi
   while [[ -z "${SESSIONNAME}" || "${SESSIONNAME}" =~ [^([:alnum:][:blank:]_.?!)] || -e "${SESSIONNAME}.session" ]]; do
     if [[ -e "${SESSIONNAME}.session" ]]; then
       error "Game already exists"
@@ -148,9 +155,11 @@ joinGame() {
     return 1
   fi
   print "Available games:"
-  menu *.session
-  SESSIONNAME="$(ls *.session | tail -n+${REPLY} | head -n1)"
-  SESSIONNAME=${SESSIONNAME%.*}
+  if [[ -z "${SESSIONNAME}" ]] ; then
+    menu *.session
+    SESSIONNAME="$(ls *.session | tail -n+${REPLY} | head -n1)"
+    SESSIONNAME=${SESSIONNAME%.*}
+  fi
   getNickname
   source "${SESSIONNAME}.session"
   IFS="|"
@@ -174,7 +183,9 @@ mainMenu() {
   print "${red}╔${blue}═${yellow}═${red}═${green}═${blue}═${yellow}═${red}═${green}═${blue}═${yellow}═${red}═${green}═${blue}═${yellow}═${red}╗"
   print "${green}║" " TERMINAL UNO " "${yellow}║"
   print "${blue}╚${yellow}═${red}══${blue}═${yellow}═${red}═${green}═${blue}═${yellow}═${red}═${green}═${blue}═${yellow}═${red}═${green}╝"
-  menu "join game" "create game" "settings" "quit"
+  if [[ -z "${REPLY}" ]]; then
+    menu "join game" "create game" "settings" "quit"
+  fi
   case ${REPLY} in
     1) joinGame;;
     2) createGame;;
