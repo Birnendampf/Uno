@@ -285,27 +285,20 @@ remove() {
   CARDS=("${CARDS[@]}")
 }
 validate() {
-  # $1 = current
-  # $2 = possible candidate
   local COLOR_1=${1:0:1}
   local COLOR_2=${2:0:1}
   local NUMBER_1=${1:1}
   local NUMBER_2=${2:1}
-  if [[ "${NUMBER_1}" == "+2" && -n "${META}" ]]; then
-    [[ "${NUMBER_2}" == "+2" ]] && return 0
-    return 1
-  fi
-  [[ "${NUMBER_2}" == "+4" ]] && return 0
-  if [[ "${NUMBER_1}" == "+4" && -n "${META}" ]]; then
-    [[ "${NUMBER_2}" == "+4" ]] && return 0
-    return 1
-  fi
+  # echo "Current: $1; Validating: $2" >&2
   if [[ -z "${META}" ]]; then
-    [[ "${NUMBER_2}" == "${NUMBER_1}" || "${COLOR_2}" == "${COLOR_1}" || "${NUMBER_1}" == "p" ]] && return 0
+    [[ "${COLOR_2}" == "${COLOR_1}" || "${NUMBER_2}" == "${NUMBER_1}" ]] && return 0
+    [[ "${NUMBER_2}" == "p" || "${NUMBER_1}" == "p" ]] && return 0
+    [[ "${NUMBER_2}" == "+4" || "${NUMBER_1}" == "+4" ]] && return 0
   else
     [[ "${NUMBER_2}" == "${NUMBER_1}" ]] && return 0
-    return 1
+    [[ "${NUMBER_1}" == "4c" && "${NUMBER_2}" == "+4" ]] && return 0
   fi
+  return 1
 }
 cardSelector() {
   source "${SESSIONNAME}.session"
