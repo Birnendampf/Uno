@@ -1,16 +1,12 @@
 #!/bin/bash
 printf "\e[9;1t"
-tmux new -d '~/Documents/GitHub/Uno/uno' ';' \
-splitw '~/Documents/GitHub/Uno/uno' ';' \
-splitw '~/Documents/GitHub/Uno/uno' ';' \
-splitw '~/Documents/GitHub/Uno/uno' ';' \
+tmux new -d '~/Documents/GitHub/Uno/uno 2 "gamer 1" "game room"'
+sleep 0.05
+tmux splitw '~/Documents/GitHub/Uno/uno 1 "gamer 2" "game room"'
+sleep 0.05
+tmux splitw '~/Documents/GitHub/Uno/uno 1 "gamer 3" "game room"'
+sleep 0.05
+tmux splitw '~/Documents/GitHub/Uno/uno 1 "gamer 4" "game room"' ';' \
 selectl tiled ';' \
-send -t 0 "2" "Enter" "gamer 1" "Enter" "game room" "Enter"
-sleep 0.05
-tmux send -t 1 "1" "Enter" "1" "Enter" "gamer 2" "Enter"
-sleep 0.05
-tmux send -t 2 "1" "Enter" "1" "Enter" "gamer 3" "Enter"
-sleep 0.05
-tmux send -t 3 "1" "Enter" "1" "Enter" "gamer 4" "Enter" ';' \
 attach
 printf "\e[9;0t"
