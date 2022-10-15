@@ -35,7 +35,7 @@ This requires smart linewrap to not break up the cards when they become plenty �
 | 1-9, ⊘, ⇄, +2 | $\frac{2}{27}$ |
 | 0, ⨁, +4  | $\frac{1}{27}$ |
 
-$RANDOM will be used to create a random number from 1 to 108
+$SRANDOM will be used to create a random number from 1 to 27
 | RNG | card | ID | notes
 | --- | --- | --- | --- |
 | 1-2 | 1 | " 
